@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>RegAnchor Compliance Audit Dossier</title>
+  <!-- Load Brand Font: IBM Plex Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* CSS RESET & PAGE SETUP FOR PUPPETEER */
+    @page {
+      size: A4 portrait;
+      margin: 16mm 16mm 20mm 16mm;
+      @bottom-right {
+        content: counter(page) " / " counter(pages);
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 8pt;
+        color: #6B7280;
+      }
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* RGA-001 Neutrals */
+      --paper: #FFFFFF;
+      --surface: #F7F8FA;
+      --line: #E4E7EC;
+      --steel: #6B7280;
+      --slate: #1F2937;
+      --ink: #0A0E14;
+
+      /* Accent Gradient (Only for Anchor Line & Compliance Bar) */
+      --accent-grad: linear-gradient(90deg, #3730A3 0%, #7C3AED 50%, #F97316 100%);
+    }
+
+    body {
+      font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--paper);
+      color: var(--ink);
+      font-size: 9.5pt;
+      line-height: 1.45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* HEADER & BRANDING */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: 12px;
+    }
+
+    .brand-title {
+      font-size: 18pt;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .brand-subtitle {
+      font-size: 8.5pt;
+      color: var(--steel);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 2px;
+    }
+
+    .dossier-meta {
+      text-align: right;
+      font-size: 8.5pt;
+      color: var(--steel);
+    }
+
+    .dossier-meta strong {
+      color: var(--slate);
+    }
+
+    /* ANCHOR LINE PRIMITIVE */
+    .anchor-line {
+      height: 2px;
+      width: 100%;
+      background: var(--accent-grad);
+      margin-bottom: 24px;
+    }
+
+    /* SECTION LAYOUTS */
+    .section-title {
+      font-size: 11pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--slate);
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 4px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 12px 14px;
+    }
+
+    .card-label {
+      font-size: 8pt;
+      text-transform: uppercase;
+      color: var(--steel);
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+
+    .card-value {
+      font-size: 13pt;
+      font-weight: 600;
+      color: var(--ink);
+      margin-top: 2px;
+    }
+
+    /* COMPLIANCE BAR PRIMITIVE */
+    .compliance-bar-container {
+      margin: 20px 0;
+      padding: 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+    }
+
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+
+    .bar-title {
+      font-size: 9pt;
+      font-weight: 600;
+      color: var(--slate);
+    }
+
+    .bar-level-badge {
+      font-size: 9.5pt;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .bar-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .bar-row {
+      height: 6px;
+      width: 100%;
+      border-radius: 1px;
+    }
+
+    /* Completed Levels (Ink Opacities) */
+    .bar-row.ink-88 { background-color: rgba(10, 14, 20, 0.88); }
+    .bar-row.ink-64 { background-color: rgba(10, 14, 20, 0.64); }
+    .bar-row.ink-44 { background-color: rgba(10, 14, 20, 0.44); }
+
+    /* Target / Calculated Current Level (Accent Gradient) */
+    .bar-row.active-level {
+      height: 8px;
+      background: var(--accent-grad);
+    }
+
+    /* Pending Levels (Low Opacity) */
+    .bar-row.pending-20 { background-color: rgba(10, 14, 20, 0.20); }
+    .bar-row.pending-10 { background-color: rgba(10, 14, 20, 0.10); }
+    .bar-row.pending-5  { background-color: rgba(10, 14, 20, 0.05); }
+
+    /* REGULATORY GAP MATRIX TABLE */
+    table.matrix-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      margin-bottom: 24px;
+      font-size: 8.5pt;
+    }
+
+    table.matrix-table th {
+      background-color: var(--surface);
+      color: var(--slate);
+      text-align: left;
+      padding: 8px 10px;
+      font-weight: 600;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    table.matrix-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      vertical-align: top;
+    }
+
+    .deadline-tag {
+      font-weight: 600;
+      color: var(--slate);
+    }
+
+    /* FOOTER & SIGNATURE BLOCK */
+    .footer-container {
+      margin-top: auto;
+      padding-top: 24px;
+      border-top: 1px solid var(--line);
+    }
+
+    .signature-block {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .signatory {
+      font-size: 9pt;
+      line-height: 1.3;
+    }
+
+    .signatory .name {
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .signatory .title {
+      color: var(--steel);
+    }
+
+    .legal-footer {
+      font-size: 7.5pt;
+      color: var(--steel);
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="header">
+    <div>
+      <div class="brand-title">RegAnchor</div>
+      <div class="brand-subtitle">AI Regulatory Compliance Dossier</div>
+    </div>
+    <div class="dossier-meta">
+      <div>Ref: <strong>RGA-2026-0894</strong></div>
+      <div>Date: <strong>28 July 2026</strong></div>
+      <div>Framework: <strong>EU AI Act (Omnibus Updated)</strong></div>
+    </div>
+  </header>
+
+  <!-- ANCHOR LINE PRIMITIVE -->
+  <div class="anchor-line"></div>
+
+  <!-- OVERVIEW CARDS -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-label">System Classification</div>
+      <div class="card-value">Annex III High-Risk AI (HRAIS)</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Overall Readiness Score</div>
+      <div class="card-value">74 / 100 (Level 4 - Structured)</div>
+    </div>
+  </div>
+
+  <!-- THE SEAL: COMPLIANCE BAR PRIMITIVE -->
+  <div class="compliance-bar-container">
+    <div class="bar-header">
+      <span class="bar-title">7-TIER REGULATORY MATURITY LADDER</span>
+      <span class="bar-level-badge">CURRENT STATUS: L4 STRUCTURED</span>
+    </div>
+    <div class="bar-stack">
+      <!-- 7 Horizontal Bars (Top down L7 to L1) -->
+      <div class="bar-row pending-5" title="L7: Autonomous Safeguards"></div>
+      <div class="bar-row pending-10" title="L6: Continuous Assurance"></div>
+      <div class="bar-row pending-20" title="L5: Integrated Governance"></div>
+      <!-- Calculated Active Level -->
+      <div class="bar-row active-level" title="L4: Structured Compliance (ACTIVE)"></div>
+      <!-- Completed Levels -->
+      <div class="bar-row ink-44" title="L3: Defined Posture"></div>
+      <div class="bar-row ink-64" title="L2: Repeatable Tracking"></div>
+      <div class="bar-row ink-88" title="L1: Initial / Ad-hoc"></div>
+    </div>
+  </div>
+
+  <!-- PRIORITY REGULATORY ACTION MATRIX -->
+  <div class="section-title">Enforcement Timeline & Actions</div>
+  <table class="matrix-table">
+    <thead>
+      <tr>
+        <th style="width: 20%;">Enforcement Date</th>
+        <th style="width: 25%;">Scope & Requirement</th>
+        <th style="width: 40%;">Required Remediation</th>
+        <th style="width: 15%;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="deadline-tag">02 August 2026</td>
+        <td><strong>Article 50 Transparency</strong><br>(Chatbots / AI Content)</td>
+        <td>Deploy user notification on direct interaction and machine-readable synthetic content watermarking.</td>
+        <td><strong>Action Required</strong></td>
+      </tr>
+      <tr>
+        <td class="deadline-tag">02 December 2026</td>
+        <td><strong>Article 50(2) & Prohibitions</strong><br>(Legacy Synthetic Content)</td>
+        <td>Bring pre-existing generative AI models into compliance with watermarking and labelling standards.</td>
+        <td>In Progress</td>
+      </tr>
+      <tr>
+        <td class="deadline-tag">02 December 2027</td>
+        <td><strong>Annex III Standalone HRAIS</strong><br>(Omnibus Deferred)</td>
+        <td>Establish Risk Management System (Art 9), Technical Documentation (Art 11), and Human Oversight (Art 14).</td>
+        <td>On Track</td>
+      </tr>
+      <tr>
+        <td class="deadline-tag">02 August 2028</td>
+        <td><strong>Annex I Regulated Products</strong><br>(Safety Components)</td>
+        <td>Integrate AI compliance into broader CE-marking and product safety conformity assessments.</td>
+        <td>Planned</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- SIGNATURE & LEGAL FOOTER -->
+  <footer class="footer-container">
+    <div class="signature-block">
+      <div class="signatory">
+        <div class="name">Fraser MacIntyre</div>
+        <div class="title">Director · MLA Group Ltd, trading as RegAnchor</div>
+      </div>
+      <div class="legal-footer">
+        <div>Operated by MLA Group Ltd</div>
+        <div>reganchor.com · Confidential Audit Report</div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
